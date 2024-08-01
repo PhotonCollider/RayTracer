@@ -1,23 +1,23 @@
-use crate::util::{random_f64_0_1, random_i32_ranged, random_in_unit_sphere, Vec3};
+use crate::util::{random_i32_ranged, random_in_unit_sphere, Vec3};
 
-const point_count: usize = 256;
+const POINT_COUNT: usize = 256;
 
 pub struct Perlin {
-    randvec: [Vec3; point_count],
-    perm_x: [i32; point_count],
-    perm_y: [i32; point_count],
-    perm_z: [i32; point_count],
+    randvec: [Vec3; POINT_COUNT],
+    perm_x: [i32; POINT_COUNT],
+    perm_y: [i32; POINT_COUNT],
+    perm_z: [i32; POINT_COUNT],
 }
 
 impl Perlin {
     pub fn new() -> Self {
         let mut ret = Self {
-            randvec: [Vec3::zero(); point_count],
-            perm_x: [0; point_count],
-            perm_y: [0; point_count],
-            perm_z: [0; point_count],
+            randvec: [Vec3::zero(); POINT_COUNT],
+            perm_x: [0; POINT_COUNT],
+            perm_y: [0; POINT_COUNT],
+            perm_z: [0; POINT_COUNT],
         };
-        for i in 0..point_count {
+        for i in 0..POINT_COUNT {
             ret.randvec[i] = random_in_unit_sphere().unit();
         }
 
@@ -93,14 +93,14 @@ impl Perlin {
         accum
     }
 
-    fn perlin_generate_perm(p: &mut [i32; point_count]) {
-        for i in 0..point_count {
+    fn perlin_generate_perm(p: &mut [i32; POINT_COUNT]) {
+        for i in 0..POINT_COUNT {
             p[i] = i as i32;
         }
-        Self::permute(p, point_count);
+        Self::permute(p, POINT_COUNT);
     }
 
-    fn permute(p: &mut [i32; point_count], n: usize) {
+    fn permute(p: &mut [i32; POINT_COUNT], n: usize) {
         for i in (1..n).rev() {
             let target = random_i32_ranged(0, i as i32) as usize;
             let tmp = p[i];

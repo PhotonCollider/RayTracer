@@ -7,7 +7,8 @@ use crate::vec3::Vec3;
 use image::{ImageBuffer, RgbImage}; //接收render传回来的图片，在main中文件输出
 use indicatif::ProgressBar;
 use rand::Rng;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
 
 pub struct Camera {
     pub image_width: u32,
@@ -30,10 +31,11 @@ pub struct Camera {
     defocus_disk_u: Vec3, // Defocus disk horizontal radius
     defocus_disk_v: Vec3, // Defocus disk vertical radius
 
-    part_num_y: u32,
-    part_num_x: u32,
+    pub part_num_y: u32,
+    pub part_num_x: u32,
     part_height: u32,
     part_width: u32,
+    thread_limit: u32,
 
     bar: ProgressBar,
     pub aspect_ratio: f64,
@@ -66,10 +68,11 @@ impl Camera {
             focus_dist: 10.0,   // Distance from camera lookfrom point to plane of perfect focus
             defocus_disk_u: Vec3::zero(),
             defocus_disk_v: Vec3::zero(),
-            part_num_y: 5,
-            part_num_x: 5,
+            part_num_y: 20,
+            part_num_x: 20,
             part_height: 0,
             part_width: 0,
+            thread_limit: 16,
             bar: ProgressBar::new(1),
             aspect_ratio: 16.0 / 9.0,
             background: Vec3::zero(),
@@ -148,18 +151,50 @@ impl Camera {
 
         // spawn threads
         crossbeam::thread::scope(move |thread_spawner| {
+            let thread_count = Arc::new(AtomicUsize::new(0));
+            let thread_number_controller = Arc::new(Condvar::new());
             for y in 0..camera_wrapper.part_num_y {
                 for x in 0..camera_wrapper.part_num_x {
                     let ymin = y * camera_wrapper.part_height;
                     let ymax = (y + 1) * camera_wrapper.part_height;
                     let xmin = x * camera_wrapper.part_width;
                     let xmax = (x + 1) * camera_wrapper.part_width;
+
+                    let lock_for_condv = Mutex::new(false);
+                    while !(thread_count.load(Ordering::SeqCst)
+                        < camera_wrapper.thread_limit as usize)
+                    {
+                        // outstanding thread number control
+                        drop(
+                            thread_number_controller
+                                .wait(lock_for_condv.lock().unwrap())
+                                .unwrap(),
+                        );
+                    }
+
+                    // move "thread_count++" out of child thread, so that it's sequential with thread number control code
+                    thread_count.fetch_add(1, Ordering::SeqCst);
+                    camera_wrapper.bar.set_message(format!(
+                        "|{} threads outstanding|",
+                        thread_count.load(Ordering::SeqCst)
+                    )); // set "thread_count" information to progress bar
+
+                    // clone for moving
                     let camera_wrapper = camera_wrapper.clone(); // 每一个子线程需要重新 clone 一个 Arc，相当于引用计数 + 1
-
                     let img_mtx = img_mtx.clone();
+                    let thread_count = thread_count.clone();
+                    let thread_number_controller = thread_number_controller.clone();
 
-                    thread_spawner.spawn(move |_| {
+                    let _ = thread_spawner.spawn(move |_| {
                         camera_wrapper.render_sub(world, ymin, ymax, xmin, xmax, img_mtx);
+
+                        thread_count.fetch_sub(1, Ordering::SeqCst); // subtract first, then notify.
+                        camera_wrapper.bar.set_message(format!(
+                            "|{} threads outstanding|",
+                            thread_count.load(Ordering::SeqCst)
+                        ));
+                        // NOTIFY
+                        thread_number_controller.notify_one();
                     });
                 }
             }
