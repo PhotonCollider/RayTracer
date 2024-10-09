@@ -15,20 +15,20 @@ mod util;
 mod vec3;
 
 use std::fs::File;
-use scene::final_scene;
+use scene::{cornell_box, final_scene, joe_fight};
 
 const AUTHOR: &str = "PhotonCollider";
 
 fn main() {
     let now = std::time::Instant::now();
-    let path = "output/final_scene.png";
+    let path = "output/cornell/cornell_antiacne.png";
 
     // 10k spp
     // 800 10k 40
-    let (mut cam, world) = final_scene(800, 10000, 40);
+    let (mut cam, world) = cornell_box();
     cam.enable_ssaa = true;
-    cam.part_num_x = 40;
-    cam.part_num_y = 40;
+    cam.part_num_x = 25;
+    cam.part_num_y = 25;
     let img = cam.render(&world);
 
     println!("Output image as \"{}\"\nAuthor: {}", path, AUTHOR);

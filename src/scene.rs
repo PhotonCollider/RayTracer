@@ -571,3 +571,54 @@ pub fn final_scene(
     cam.defocus_angle = 0.0;
     (cam, world)
 }
+
+// this scene is just for fun XD
+pub fn joe_fight(
+    image_width: u32,
+    sample_per_pixel: u32,
+    max_depth: u32,
+) -> (Camera, HittableList) {
+    let mut world = HittableList::new();
+
+    let pertext = Arc::new(NoiseTexture::new(4.0));
+    let joetext = Arc::new(ImageTexture::new("169joefight.png"));
+    world.add(Arc::new(Sphere::new(
+        Vec3::new(0.0, -1000.0, 0.0),
+        1000.0,
+        Arc::new(Lambertian::from_texture(pertext)),
+    )));
+    world.add(Arc::new(Sphere::new(
+        Vec3::new(0.0, 2.0, 0.0),
+        2.0,
+        Arc::new(Lambertian::from_texture(joetext)),
+    )));
+
+    let big_difflight = Arc::new(DiffuseLight::from_color(Vec3::new(7.0, 7.0, 7.0)));
+    let small_difflight = Arc::new(DiffuseLight::from_color(Vec3::ones() / 2.0));
+    world.add(Arc::new(Quad::new(
+        Vec3::new(2.5, 0.5, -3.0),
+        Vec3::new(3.0, 0.0, 0.0),
+        Vec3::new(0.0, 3.0, 0.0),
+        big_difflight.clone(),
+    )));
+    world.add(Arc::new(Sphere::new(
+        Vec3::new(0.0, 13.0, 0.0),
+        7.0,
+        small_difflight.clone(),
+    )));
+
+    let mut cam = Camera::default();
+    cam.aspect_ratio = 16.0 / 9.0;
+    cam.image_width = image_width;
+    cam.sample_per_pixel = sample_per_pixel;
+    cam.max_depth = max_depth;
+    cam.background = Vec3::zero();
+
+    cam.vfov = 20.0;
+    cam.lookfrom = Vec3::new(26.0, 3.0, 6.0);
+    cam.lookat = Vec3::new(0.0, 2.0, 0.0);
+    cam.vup = Vec3::new(0.0, 1.0, 0.0);
+
+    cam.defocus_angle = 0.0;
+    (cam, world)
+}

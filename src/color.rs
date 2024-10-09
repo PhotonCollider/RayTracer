@@ -10,7 +10,16 @@ use image::RgbImage;
 // }
 
 /// the multi-sample write_color() function
-pub fn write_color(pixel_color: Vec3, img: &mut RgbImage, i: usize, j: usize) {
+pub fn write_color(mut pixel_color: Vec3, img: &mut RgbImage, i: usize, j: usize) {
+    if pixel_color.x != pixel_color.x {
+        pixel_color.x = 0.0;
+    }
+    if pixel_color.y != pixel_color.y {
+        pixel_color.y = 0.0;
+    }
+    if pixel_color.z != pixel_color.z {
+        pixel_color.z = 0.0;
+    }
     let interval: Interval = Interval::with_bounds(0.0, 255.0);
     let pixel = img.get_pixel_mut(i as u32, j as u32);
     *pixel = image::Rgb([
